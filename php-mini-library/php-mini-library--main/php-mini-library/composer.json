@@ -1,0 +1,6 @@
+{
+  "name": "student/php-mini-library",
+  "description": "Week 1 lab - PHP Mini Library App",
+  "type": "project",
+  "require": {}
+}
