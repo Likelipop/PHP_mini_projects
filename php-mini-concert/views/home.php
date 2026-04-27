@@ -63,14 +63,19 @@
     <div class="text-center mb-5">
         <h1 class="display-4 fw-bolder text-dark mb-2"><?= htmlspecialchars($data['title']) ?></h1>
         <p class="lead text-muted mx-auto" style="max-width: 600px;">
-            Chào mừng Đạt! Khám phá và đặt vé cho những sự kiện âm nhạc bùng nổ nhất năm 2026.
+            Chào mừng Bạn! Khám phá và đặt vé cho những sự kiện âm nhạc bùng nổ nhất năm 2026.
         </p>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
         <h2 class="h4 fw-bold mb-0">Upcoming Concerts</h2>
         <span class="text-muted small">Showing <?= count($data['concerts']) ?> shows</span>
     </div>
+    <a href="/concerts" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+        Xem tất cả &rarr;
+    </a>
+</div>
 
 <div class="row">
     <?php foreach ($data['concerts'] as $concert): ?>
@@ -135,17 +140,7 @@
     </div>
 </div>
 
-<script>
-    const bookingModal = document.getElementById('bookingModal');
-    bookingModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const concertId = button.getAttribute('data-concert-id');
-        const concertTitle = button.getAttribute('data-concert-title');
-        
-        bookingModal.querySelector('#modalConcertId').value = concertId;
-        bookingModal.querySelector('#modalConcertTitle').textContent = concertTitle;
-    });
-</script>
+<?php require __DIR__ . '/partials/booking_modal.php'; ?>
 
     <footer class="mt-5 py-5 border-top">
         <div class="row align-items-center">

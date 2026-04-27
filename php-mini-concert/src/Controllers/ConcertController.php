@@ -4,18 +4,44 @@ namespace App\Controllers;
 
 class ConcertController
 {
-    public function index(array $concerts): void
+    public function index($concerts)
     {
-        // Thay vì Response::json, chúng ta chuẩn bị dữ liệu cho view
+        // 1. Lấy tham số bộ lọc từ URL (phương thức GET)
+        $filterStatus = $_GET['status'] ?? 'all'; // all, available, soldout
+        $searchKeyword = $_GET['search'] ?? '';
+
+        // 2. Thực hiện lọc dữ liệu
+        $filteredConcerts = array_filter($concerts, function ($concert) use ($filterStatus, $searchKeyword) {
+            $matchStatus = true;
+            $matchSearch = true;
+
+            // Lọc theo trạng thái vé
+            if ($filterStatus === 'available') {
+                $matchStatus = $concert['seats_available'] > 0;
+            } elseif ($filterStatus === 'soldout') {
+                $matchStatus = $concert['seats_available'] <= 0;
+            }
+
+            // Lọc theo từ khóa tìm kiếm (tên concert)
+            if (!empty($searchKeyword)) {
+                $matchSearch = stripos($concert['title'], $searchKeyword) !== false;
+            }
+
+            return $matchStatus && $matchSearch;
+        });
+
+        // 3. Chuẩn bị dữ liệu truyền ra view
         $data = [
-            'title' => 'Lịch Diễn Concert 2026',
-            'concerts' => $concerts
+            'title' => 'Tất cả Concerts',
+            'concerts' => $filteredConcerts,
+            'filters' => [
+                'status' => $filterStatus,
+                'search' => $searchKeyword
+            ]
         ];
 
-        // Gọi file view để hiển thị giao diện
-        // Lưu ý: dirname(__DIR__, 2) để nhảy từ src/Controllers ngược lên thư mục gốc
-        require dirname(__DIR__, 2) . '/views/concerts_list.php';
-        exit;
+        // 4. Gọi View mới
+        require dirname(__DIR__, 2) . '/views/concerts.php';
     }
 
     public function head(): void
