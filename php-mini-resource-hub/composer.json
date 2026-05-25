@@ -1,0 +1,16 @@
+{
+    "name": "likelipop/php-mini-resource-hub",
+    "description": "Student Learning Resource Hub",
+    "require": {
+        "php": ">=8.1",
+        "aws/aws-sdk-php": "^3.0",
+        "erusev/parsedown": "^1.7"
+    },
+    "autoload": {
+        "psr-4": {
+            "Core\\": "src/Core/",
+            "Support\\": "src/Support/",
+            "Controllers\\": "src/Controllers/"
+        }
+    }
+}
