@@ -43,14 +43,30 @@ mini-stationery-store/
 
 ## ⚙️ Installation & Setup
 
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/your-username/mini-stationery-store.git
-    ```
-2.  **Move to your local server directory** (e.g., `htdocs` for XAMPP or `/var/www/html` for Apache).
-3.  **Start your PHP server**.
-4.  **Access the project**:
-    Open your browser and navigate to `http://localhost/mini-stationery-store`.
+1. **Navigate to the workshop directory**:
+   ```bash
+   cd php-mini-workshop
+   ```
+
+2. **Install Composer dependencies**:
+   ```bash
+   composer install
+   ```
+
+3. **Configure the environment**:
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+4. **Start the PHP development server**:
+   Set the server's document root to the `public/` directory:
+   ```bash
+   php -S localhost:8000 -t public
+   ```
+
+5. **Access the application**:
+   Open your web browser and go to: `http://localhost:8000`
 
 ---
 
