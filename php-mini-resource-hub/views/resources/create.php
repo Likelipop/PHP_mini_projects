@@ -5,18 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Resource - Student Learning Resource Hub</title>
     <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .honeypot { display: none; }
+        .inline-form { display: inline; }
+        .link-button { 
+            background: none; border: none; color: white; cursor: pointer; 
+            font: inherit; padding: 0.5rem 1rem; text-decoration: none; 
+            font-weight: 500; border-radius: 4px;
+        }
+        .link-button:hover { background: rgba(255,255,255,0.1); }
+    </style>
 </head>
 <body>
     <?php
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $isLoggedIn = isset($_SESSION['user_id']);
-        $userName = $isLoggedIn ? htmlspecialchars($_SESSION['user_name']) : '';
+        $isLoggedIn = is_logged_in();
+        $userName = $isLoggedIn ? h($_SESSION['user_name']) : '';
         
         if (!$isLoggedIn) {
-            header('Location: /login');
-            exit;
+            redirect('/login');
         }
     ?>
     <header>
@@ -25,23 +31,47 @@
             <a href="/">Home</a>
             <a href="/resources">Resources</a>
             <span class="nav-user">Hi, <?= $userName ?></span>
-            <a href="/logout" class="nav-logout">Logout</a>
+            <form method="post" action="/logout" class="inline-form">
+                <button type="submit" class="link-button">Logout</button>
+            </form>
         </nav>
     </header>
     <main>
+        <?php $success = flash_get('success'); if ($success): ?>
+            <div class="alert alert-success"><?= h($success) ?></div>
+        <?php endif; ?>
+        <?php $error = flash_get('error'); if ($error): ?>
+            <div class="alert alert-error"><?= h($error) ?></div>
+        <?php endif; ?>
+
+        <?php $errors = flash_get('errors', []); $old = flash_get('old', []); ?>
+
+        <?php if (!empty($errors['_global'])): ?>
+            <div class="alert alert-error">
+                <?= h($errors['_global']) ?>
+            </div>
+        <?php endif; ?>
+
         <div style="max-width: 700px; margin: 0 auto;">
             <form action="/resources" method="POST" enctype="multipart/form-data" class="form-card">
                 <h2 style="margin-top: 0; margin-bottom: 1.5rem; color: #0056b3;">Share Your Knowledge</h2>
                 
+                <div class="honeypot">
+                    <label>Website</label>
+                    <input name="website" tabindex="-1" autocomplete="off">
+                </div>
+
                 <div class="form-group">
                     <label for="title">📋 Resource Title *</label>
-                    <input type="text" id="title" name="title" required placeholder="e.g., Introduction to Web Development">
+                    <input type="text" id="title" name="title" value="<?= h($old['title'] ?? '') ?>" placeholder="e.g., Introduction to Web Development">
+                    <?php if (!empty($errors['title'])): ?><div class="error-text" style="color:red;font-size:0.9em;margin-top:4px;"><?= h($errors['title']) ?></div><?php endif; ?>
                 </div>
 
                 <div class="form-group">
                     <label for="markdown_recommendation">📝 Description & Recommendations</label>
-                    <textarea id="markdown_recommendation" name="markdown_recommendation" rows="8" placeholder="Describe the resource and share your thoughts...&#10;&#10;Supports Markdown:&#10;# Heading&#10;**bold** *italic* [link](url)&#10;- List item 1&#10;- List item 2"></textarea>
+                    <textarea id="markdown_recommendation" name="markdown_recommendation" rows="8" placeholder="Describe the resource and share your thoughts..."><?= h($old['markdown_recommendation'] ?? '') ?></textarea>
                     <small>You can use Markdown for formatting. Leave empty if you only want to share a file.</small>
+                    <?php if (!empty($errors['markdown_recommendation'])): ?><div class="error-text" style="color:red;font-size:0.9em;margin-top:4px;"><?= h($errors['markdown_recommendation']) ?></div><?php endif; ?>
                 </div>
 
                 <div class="form-group">

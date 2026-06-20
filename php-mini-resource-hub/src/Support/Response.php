@@ -29,6 +29,7 @@ class Response
     {
         http_response_code($status);
         header('Location: ' . $url);
+        exit;
     }
 
     public static function text(int $status, string $message): void

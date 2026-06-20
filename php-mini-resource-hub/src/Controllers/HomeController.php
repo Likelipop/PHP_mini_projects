@@ -8,12 +8,7 @@ use Support\Response;
 
 class HomeController
 {
-    public function __construct()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-    }
+
 
     public function index(): void
     {

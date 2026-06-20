@@ -3,16 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'Hub') ?></title>
+    <title><?= h($title ?? 'Hub') ?></title>
     <link rel="stylesheet" href="/assets/style.css">
+    <style>
+        .inline-form { display: inline; }
+        .link-button { 
+            background: none; border: none; color: white; cursor: pointer; 
+            font: inherit; padding: 0.5rem 1rem; text-decoration: none; 
+            font-weight: 500; border-radius: 4px;
+        }
+        .link-button:hover { background: rgba(255,255,255,0.1); }
+    </style>
 </head>
 <body>
     <?php
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        $isLoggedIn = isset($_SESSION['user_id']);
-        $userName = $isLoggedIn ? htmlspecialchars($_SESSION['user_name']) : '';
+        $isLoggedIn = is_logged_in();
+        $userName = $isLoggedIn ? h($_SESSION['user_name']) : '';
     ?>
     <header>
         <h1>Student Learning Resource Hub</h1>
@@ -21,7 +27,9 @@
             <a href="/resources">Resources</a>
             <?php if ($isLoggedIn): ?>
                 <span class="nav-user">Hi, <?= $userName ?></span>
-                <a href="/logout" class="nav-logout">Logout</a>
+                <form method="post" action="/logout" class="inline-form">
+                    <button type="submit" class="link-button">Logout</button>
+                </form>
             <?php else: ?>
                 <a href="/login">Login</a>
                 <a href="/signup" class="nav-signup">Sign Up</a>
@@ -29,6 +37,13 @@
         </nav>
     </header>
     <main>
+        <?php $success = flash_get('success'); if ($success): ?>
+            <div class="alert alert-success"><?= h($success) ?></div>
+        <?php endif; ?>
+        <?php $error = flash_get('error'); if ($error): ?>
+            <div class="alert alert-error"><?= h($error) ?></div>
+        <?php endif; ?>
+
         <section class="hero">
             <?php if ($isLoggedIn): ?>
                 <h2>Welcome back, <?= $userName ?>! 👋</h2>
@@ -46,24 +61,6 @@
                 </div>
             <?php endif; ?>
         </section>
-
-        <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
-            <div class="alert alert-success">
-                ✓ You have logged in successfully.
-            </div>
-        <?php endif; ?>
-
-        <?php if (isset($_GET['signup']) && $_GET['signup'] === 'success'): ?>
-            <div class="alert alert-success">
-                ✓ Account created successfully! Welcome aboard.
-            </div>
-        <?php endif; ?>
-
-        <?php if (isset($_GET['logout']) && $_GET['logout'] === 'success'): ?>
-            <div class="alert alert-success">
-                ✓ You have been logged out successfully.
-            </div>
-        <?php endif; ?>
 
         <section class="features">
             <h3>Features</h3>

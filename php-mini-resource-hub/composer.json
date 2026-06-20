@@ -11,6 +11,7 @@
             "Core\\": "src/Core/",
             "Support\\": "src/Support/",
             "Controllers\\": "src/Controllers/"
-        }
+        },
+        "files": ["src/Support/helpers.php"]
     }
 }

@@ -11,19 +11,6 @@ use Parsedown;
 
 class ResourceController
 {
-    public function __construct()
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        // Check authentication for certain actions
-        if (!$this->isLoggedIn() && in_array($_SERVER['REQUEST_METHOD'], ['POST'])) {
-            Response::text(401, 'Unauthorized: Please login to perform this action');
-            exit;
-        }
-    }
-
     public function index(): void
     {
         $db = Database::getConnection();
@@ -47,50 +34,84 @@ class ResourceController
 
     public function create(): void
     {
-        if (!$this->isLoggedIn()) {
-            Response::redirect('/login');
-            return;
-        }
-        
+        require_login();
         Response::view('resources/create');
     }
 
     public function store(): void
     {
-        if (!$this->isLoggedIn()) {
-            Response::text(401, 'Unauthorized');
-            return;
-        }
+        require_login();
 
-        $title = $_POST['title'] ?? '';
-        $markdown = $_POST['markdown_recommendation'] ?? '';
+        $data = [
+            'title'                   => trim($_POST['title'] ?? ''),
+            'markdown_recommendation' => trim($_POST['markdown_recommendation'] ?? ''),
+            'website'                 => trim($_POST['website'] ?? ''), // honeypot
+        ];
+
         $file = $_FILES['file'] ?? null;
-        $userId = (int) $_SESSION['user_id'];
+        $errors = $this->validate($data);
 
-        if (empty($title)) {
-            Response::text(400, 'Title is required');
+        if (!empty($errors)) {
+            flash_set('errors', $errors);
+            flash_set('old', ['title' => $data['title'], 'markdown_recommendation' => $data['markdown_recommendation']]);
+            redirect('/resources/create');
             return;
         }
 
+        $userId = (int) $_SESSION['user_id'];
         $objectKey = null;
 
         if ($file && $file['error'] === UPLOAD_ERR_OK) {
             $objectKey = uniqid() . '_' . basename($file['name']);
             if (!Storage::upload($objectKey, $file['tmp_name'])) {
-                Response::text(500, 'Failed to upload file');
+                flash_set('errors', ['_global' => 'Lỗi tải lên file.']);
+                flash_set('old', ['title' => $data['title'], 'markdown_recommendation' => $data['markdown_recommendation']]);
+                redirect('/resources/create');
                 return;
             }
         }
 
-        $db = Database::getConnection();
-        $stmt = $db->prepare('INSERT INTO resources (user_id, title, markdown_recommendation, minio_object_key) VALUES (?, ?, ?, ?)');
-        $stmt->execute([$userId, $title, $markdown, $objectKey]);
+        try {
+            $db = Database::getConnection();
+            $stmt = $db->prepare('INSERT INTO resources (user_id, title, markdown_recommendation, minio_object_key) VALUES (?, ?, ?, ?)');
+            $stmt->execute([$userId, $data['title'], $data['markdown_recommendation'], $objectKey]);
 
-        Response::redirect('/resources?created=1');
+            flash_set('success', 'Resource created successfully! Thanks for sharing with the community.');
+            redirect('/resources'); // real PRG
+        } catch (\Exception $e) {
+            flash_set('errors', ['_global' => 'Lỗi lưu trữ tài nguyên.']);
+            flash_set('old', ['title' => $data['title'], 'markdown_recommendation' => $data['markdown_recommendation']]);
+            redirect('/resources/create');
+        }
     }
 
-    private function isLoggedIn(): bool
+    private function validate(array $data): array
     {
-        return isset($_SESSION['user_id']);
+        $errors = [];
+
+        // Honeypot
+        if ($data['website'] !== '') {
+            $errors['_global'] = 'Yêu cầu không hợp lệ.';
+            return $errors;
+        }
+
+        // Rate limit
+        $last = $_SESSION['last_resource_at'] ?? 0;
+        if ($last && time() - $last < 5) {
+            $errors['_global'] = 'Bạn gửi quá nhanh. Vui lòng thử lại sau vài giây.';
+            return $errors;
+        }
+
+        if ($data['title'] === '') {
+            $errors['title'] = 'Vui lòng nhập tiêu đề.';
+        } elseif (mb_strlen($data['title']) < 5) {
+            $errors['title'] = 'Tiêu đề phải có ít nhất 5 ký tự.';
+        }
+
+        if (empty($errors)) {
+            $_SESSION['last_resource_at'] = time();
+        }
+
+        return $errors;
     }
 }
