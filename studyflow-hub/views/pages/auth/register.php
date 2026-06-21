@@ -20,6 +20,7 @@
                     <span class="input-group-text bg-body-tertiary"><i class="fa-regular fa-user text-muted"></i></span>
                     <input type="text" name="username" id="username" class="form-control <?= isset($errors['username']) ? 'is-invalid' : '' ?>" placeholder="Nhập username..." value="<?= h($old['username'] ?? '') ?>" required autofocus>
                 </div>
+                <div class="form-text text-muted" style="font-size: 0.75rem;">Chỉ gồm chữ thường, số, dấu chấm (.), dấu gạch dưới (_). Độ dài 3-30 ký tự.</div>
                 <?php if (isset($errors['username'])): ?>
                     <div class="invalid-feedback small d-block"><?= h($errors['username']) ?></div>
                 <?php endif; ?>
@@ -38,7 +39,7 @@
             </div>
 
             <!-- Password input -->
-            <div class="mb-4">
+            <div class="mb-3">
                 <label for="password" class="form-label small fw-semibold text-muted">Mật khẩu</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-body-tertiary"><i class="fa-solid fa-lock text-muted"></i></span>
@@ -46,6 +47,18 @@
                 </div>
                 <?php if (isset($errors['password'])): ?>
                     <div class="invalid-feedback small d-block"><?= h($errors['password']) ?></div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Confirm Password input -->
+            <div class="mb-4">
+                <label for="confirm_password" class="form-label small fw-semibold text-muted">Xác nhận mật khẩu</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-body-tertiary"><i class="fa-solid fa-lock text-muted"></i></span>
+                    <input type="password" name="confirm_password" id="confirm_password" class="form-control <?= isset($errors['confirm_password']) ? 'is-invalid' : '' ?>" placeholder="Nhập lại mật khẩu..." required>
+                </div>
+                <?php if (isset($errors['confirm_password'])): ?>
+                    <div class="invalid-feedback small d-block"><?= h($errors['confirm_password']) ?></div>
                 <?php endif; ?>
             </div>
 

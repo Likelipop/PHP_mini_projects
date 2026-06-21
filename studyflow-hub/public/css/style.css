@@ -101,6 +101,25 @@ a:hover {
     z-index: 100;
 }
 
+.navbar {
+    background: rgba(10, 13, 22, 0.75) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-color) !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+}
+
+.navbar .nav-link {
+    font-size: 0.85rem !important;
+    color: var(--text-secondary) !important;
+    transition: var(--transition-fast);
+}
+
+.navbar .nav-link:hover, .navbar .nav-link.active {
+    color: #ffffff !important;
+}
+
 .header-container {
     max-width: 1400px;
     margin: 0 auto;

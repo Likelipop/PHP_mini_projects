@@ -25,6 +25,7 @@ class AuthController extends BaseController
     {
         if (Session::isLoggedIn()) {
             $this->redirect('/');
+            exit;
         }
         
         $this->render('auth/login', [
@@ -43,25 +44,38 @@ class AuthController extends BaseController
         // 2. Rate Limit: Max 5 login requests per 30 seconds
         RateLimitMiddleware::handle(5, 30);
 
-        $username = Request::input('username', '');
-        $password = Request::input('password', '');
+        $username = trim((string)Request::input('username', ''));
+        $password = (string)Request::input('password', '');
 
-        $result = $this->userService->login($username, $password);
-
-        if ($result['success']) {
-            flash_set('success', 'Đăng nhập thành công!');
-            $this->redirect('/');
+        // Validation sequence for Login (Emptiness checks first)
+        $error = '';
+        if ($username === '') {
+            $error = 'Tên đăng nhập không được để trống.';
+        } elseif ($password === '') {
+            $error = 'Mật khẩu không được để trống.';
         } else {
-            flash_set('error', $result['error']);
-            flash_set('old', ['username' => $username]);
-            $this->redirect('/login'); // PRG
+            $result = $this->userService->login($username, $password);
+            if ($result['success']) {
+                flash_set('success', 'Đăng nhập thành công!');
+                $this->redirect('/');
+                exit;
+            } else {
+                $error = $result['error'];
+            }
         }
+
+        // On failure: Do NOT redirect (stay on POST), render directly
+        $this->render('auth/login', [
+            'error' => $error,
+            'old' => ['username' => $username],
+        ]);
     }
 
     public function showRegister(): void
     {
         if (Session::isLoggedIn()) {
             $this->redirect('/');
+            exit;
         }
         
         $this->render('auth/register', [
@@ -80,9 +94,10 @@ class AuthController extends BaseController
         RateLimitMiddleware::handle(3, 60);
 
         $data = [
-            'username' => Request::input('username', ''),
-            'email' => Request::input('email', ''),
-            'password' => Request::input('password', ''),
+            'username' => trim((string)Request::input('username', '')),
+            'email' => trim((string)Request::input('email', '')),
+            'password' => (string)Request::input('password', ''),
+            'confirm_password' => (string)Request::input('confirm_password', ''),
         ];
 
         $result = $this->userService->register($data);
@@ -90,14 +105,16 @@ class AuthController extends BaseController
         if ($result['success']) {
             flash_set('success', 'Đăng ký thành công! Hãy đăng nhập.');
             $this->redirect('/login');
+            exit;
         } else {
-            flash_set('errors', $result['errors']);
-            // Sticky form (no password)
-            flash_set('old', [
-                'username' => $data['username'],
-                'email' => $data['email']
+            // On failure: Do NOT redirect (stay on POST), render directly
+            $this->render('auth/register', [
+                'errors' => $result['errors'],
+                'old' => [
+                    'username' => $data['username'],
+                    'email' => $data['email']
+                ]
             ]);
-            $this->redirect('/register'); // PRG
         }
     }
 
@@ -107,5 +124,6 @@ class AuthController extends BaseController
         CsrfMiddleware::handle();
         $this->userService->logout();
         $this->redirect('/login');
+        exit;
     }
 }

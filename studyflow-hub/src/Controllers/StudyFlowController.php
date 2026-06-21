@@ -70,9 +70,9 @@ class StudyFlowController extends BaseController
 
         $data = [
             'user_id' => Session::get('user_id'),
-            'title' => Request::input('title', ''),
-            'slug' => Request::input('slug', ''),
-            'description' => Request::input('description', ''),
+            'title' => trim((string)Request::input('title', '')),
+            'slug' => trim((string)Request::input('slug', '')),
+            'description' => trim((string)Request::input('description', '')),
             'is_pinned' => Request::input('is_pinned') === '1',
             'is_public' => Request::input('is_public') === '1',
         ];
@@ -82,10 +82,12 @@ class StudyFlowController extends BaseController
         if ($result['success']) {
             flash_set('success', 'Tạo StudyFlow thành công!');
             $this->redirect('/studyflow/' . $result['slug']);
+            exit;
         } else {
-            flash_set('errors', $result['errors']);
-            flash_set('old', $data);
-            $this->redirect('/studyflows/create');
+            $this->render('studyflow/create', [
+                'errors' => $result['errors'],
+                'old' => $data,
+            ]);
         }
     }
 
