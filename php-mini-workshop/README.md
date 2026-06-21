@@ -53,7 +53,7 @@ mini-stationery-store/
    composer install
    ```
 
-3. **Configure the environment**:
+3. **Configure the environment **:
    Copy the example environment file:
    ```bash
    cp .env.example .env

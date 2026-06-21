@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: studyflow_app
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - db
+      - minio
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=studyflow_db
+      - DB_USER=studyflow_user
+      - DB_PASS=studyflow_pass
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_EXTERNAL_ENDPOINT=http://localhost:9002
+      - MINIO_ACCESS_KEY=admin
+      - MINIO_SECRET_KEY=password123
+      - MINIO_BUCKET=studyflow-assets
+
+  db:
+    image: postgres:15
+    container_name: studyflow_db
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=studyflow_user
+      - POSTGRES_PASSWORD=studyflow_pass
+      - POSTGRES_DB=studyflow_db
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  minio:
+    image: minio/minio
+    container_name: studyflow_minio
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password123
+    command: server /data --console-address ":9001"

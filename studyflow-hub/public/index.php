@@ -1,0 +1,57 @@
+<?php
+
+declare(strict_types=1);
+
+// Bootstrap the application
+require __DIR__ . '/../vendor/autoload.php';
+
+use StudyFlow\Core\Router;
+use StudyFlow\Core\Request;
+use StudyFlow\Core\Response;
+use StudyFlow\Core\Session;
+
+// Start session
+Session::start();
+
+// Define Routes
+$router = new Router();
+
+// Auth Routes
+$router->get('/login', 'AuthController@showLogin');
+$router->post('/login', 'AuthController@login');
+$router->get('/register', 'AuthController@showRegister');
+$router->post('/register', 'AuthController@register');
+$router->post('/logout', 'AuthController@logout');
+
+// Main Pages
+$router->get('/', 'HomeController@index');
+
+// StudyFlow Routes
+$router->get('/studyflows', 'StudyFlowController@index');
+$router->get('/studyflows/create', 'StudyFlowController@showCreate');
+$router->post('/studyflows/create', 'StudyFlowController@create');
+$router->get('/studyflow/{slug}', 'StudyFlowController@show');
+$router->post('/studyflow/{slug}/delete', 'StudyFlowController@delete');
+
+// Asset and Notes Routes
+$router->post('/studyflow/{slug}/assets/upload', 'AssetController@upload');
+$router->post('/studyflow/{slug}/assets/{id}/delete', 'AssetController@deleteAsset');
+$router->post('/studyflow/{slug}/notes/create', 'AssetController@createNote');
+$router->post('/studyflow/{slug}/notes/{id}/edit', 'AssetController@editNote');
+$router->get('/assets/download/{id}', 'AssetController@download');
+
+// API endpoints
+$router->get('/api/tags/search', 'AssetController@searchTags');
+$router->post('/api/fragments/create', 'AssetController@createFragmentApi');
+$router->get('/api/assets/{id}/fragments', 'AssetController@getFragmentsApi');
+
+// Dispatch Request
+$method = Request::getMethod();
+$path = Request::getPath();
+
+try {
+    $router->dispatch($method, $path);
+} catch (\Throwable $e) {
+    // Safe error handling (hide stacktrace in production if desired)
+    Response::text(500, 'Một lỗi hệ thống đã xảy ra: ' . $e->getMessage());
+}
