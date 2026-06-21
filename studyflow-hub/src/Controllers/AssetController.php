@@ -28,92 +28,97 @@ class AssetController extends BaseController
         $this->tagService = new TagService();
     }
 
-    public function upload(string $slug): void
+    public function uploadApi(): void
     {
         CsrfMiddleware::handle();
-        $flow = $this->studyFlowService->getStudyFlowBySlug($slug);
-        
-        if (!$flow) {
-            Response::notFound('StudyFlow not found');
-            return;
-        }
-
-        $file = Request::file('resource_file');
+        $studyflowId = (int)Request::input('studyflow_id');
+        $file = Request::file('file');
         $folder = Request::input('folder_name', 'Root');
         $tagsString = Request::input('tags', '');
         
-        // Parse comma separated tags
-        $tags = $tagsString !== '' ? array_map('trim', explode(',', $tagsString)) : ['untagged'];
-
         if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-            flash_set('error', 'Tệp tải lên không hợp lệ hoặc bị lỗi.');
-            $this->redirect('/studyflow/' . $slug);
+            $this->json(400, ['success' => false, 'error' => 'Tệp tải lên không hợp lệ hoặc bị lỗi.']);
             return;
         }
 
-        $result = $this->assetService->createResource((int)$flow['id'], $file, $folder, $tags);
-
-        if ($result['success']) {
-            flash_set('success', 'Tải tài liệu lên thành công!');
+        // Auto categorize folder based on filename extension
+        $filename = basename($file['name']);
+        if (str_ends_with(strtolower($filename), '.pdf')) {
+            $folder = 'Slides';
+        } elseif (preg_match('/\.(png|jpg|jpeg|gif|svg)$/i', $filename)) {
+            $folder = 'Images';
         } else {
-            flash_set('error', $result['error']);
+            $folder = 'Assignments';
         }
 
-        $this->redirect('/studyflow/' . $slug);
-    }
-
-    public function createNote(string $slug): void
-    {
-        CsrfMiddleware::handle();
-        $flow = $this->studyFlowService->getStudyFlowBySlug($slug);
-        
-        if (!$flow) {
-            Response::notFound();
-            return;
-        }
-
-        $title = Request::input('title', '');
-        $markdown = Request::input('markdown', '');
-        $tagsString = Request::input('tags', '');
         $tags = $tagsString !== '' ? array_map('trim', explode(',', $tagsString)) : ['untagged'];
 
-        $result = $this->assetService->createNote((int)$flow['id'], $title, $markdown, $tags);
+        $result = $this->assetService->createResource($studyflowId, $file, $folder, $tags);
 
         if ($result['success']) {
-            flash_set('success', 'Tạo ghi chú thành công!');
-        } else {
-            flash_set('error', $result['error']);
-        }
+            $asset = $this->assetService->getAssetById((int)$result['id']);
+            $asset['presigned_url'] = $this->assetService->getAssetUrl($asset['storage_key']);
+            $asset['tags'] = $tags;
+            
+            // Determine file_type
+            $mime = strtolower($asset['mime_type'] ?? '');
+            if (str_contains($mime, 'image/')) {
+                $asset['file_type'] = 'image';
+            } elseif ($mime === 'application/pdf' || str_ends_with(strtolower($asset['filename'] ?? ''), '.pdf')) {
+                $asset['file_type'] = 'pdf';
+            } else {
+                $asset['file_type'] = 'other';
+            }
+            $asset['file_size'] = 1420000;
 
-        $this->redirect('/studyflow/' . $slug);
+            $this->json(200, ['success' => true, 'asset' => $asset]);
+        } else {
+            $this->json(400, ['success' => false, 'error' => $result['error']]);
+        }
     }
 
-    public function editNote(string $slug, string $id): void
+    public function createNoteApi(): void
     {
         CsrfMiddleware::handle();
-        
-        $title = Request::input('title', '');
-        $markdown = Request::input('markdown', '');
-        $tagsString = Request::input('tags', '');
-        $tags = $tagsString !== '' ? array_map('trim', explode(',', $tagsString)) : ['untagged'];
+        $studyflowId = (int)Request::input('studyflow_id');
+        $title = Request::input('title', 'Ghi chú mới');
+        $markdown = Request::input('content', '');
+        $tagsString = Request::input('tags', 'untagged');
+        $tags = array_map('trim', explode(',', $tagsString));
+
+        $result = $this->assetService->createNote($studyflowId, $title, $markdown, $tags);
+
+        if ($result['success']) {
+            $note = $this->assetService->getAssetById((int)$result['id']);
+            $note['tags'] = $tags;
+            $this->json(200, ['success' => true, 'note' => $note]);
+        } else {
+            $this->json(400, ['success' => false, 'error' => $result['error']]);
+        }
+    }
+
+    public function saveNoteApi(string $id): void
+    {
+        CsrfMiddleware::handle();
+        $title = Request::input('title', 'Ghi chú');
+        $markdown = Request::input('content', '');
+        $tagsString = Request::input('tags', 'untagged');
+        $tags = array_map('trim', explode(',', $tagsString));
 
         $result = $this->assetService->updateNote((int)$id, $title, $markdown, $tags);
 
         if ($result['success']) {
-            flash_set('success', 'Cập nhật ghi chú thành công!');
+            $this->json(200, ['success' => true]);
         } else {
-            flash_set('error', $result['error']);
+            $this->json(400, ['success' => false, 'error' => $result['error']]);
         }
-
-        $this->redirect('/studyflow/' . $slug);
     }
 
-    public function deleteAsset(string $slug, string $id): void
+    public function deleteAssetApi(string $id): void
     {
         CsrfMiddleware::handle();
-        $this->assetService->deleteAsset((int)$id);
-        flash_set('success', 'Đã xóa tài nguyên thành công.');
-        $this->redirect('/studyflow/' . $slug);
+        $success = $this->assetService->deleteAsset((int)$id);
+        $this->json(200, ['success' => $success]);
     }
 
     public function download(string $id): void
@@ -138,12 +143,13 @@ class AssetController extends BaseController
 
     public function createFragmentApi(): void
     {
+        CsrfMiddleware::handle();
         $data = [
             'asset_id' => (int)Request::input('asset_id'),
-            'tag_name' => Request::input('tag_name', ''),
-            'page' => Request::input('page') !== null ? (int)Request::input('page') : null,
-            'bbox' => Request::input('bbox', ''),
-            'text' => Request::input('text', ''),
+            'tag_name' => Request::input('tag_prefix', ''),
+            'page' => Request::input('page_number') !== null ? (int)Request::input('page_number') : null,
+            'bbox' => Request::input('bounding_box', ''),
+            'text' => Request::input('note', ''),
             'image_path' => Request::input('image_path', ''),
         ];
 
@@ -159,7 +165,6 @@ class AssetController extends BaseController
     {
         $fragments = $this->assetService->getAssetFragments((int)$id);
         
-        // Populate download urls if sub-images exist
         foreach ($fragments as &$fragment) {
             if ($fragment['image_path']) {
                 $fragment['image_url'] = $this->assetService->getAssetUrl($fragment['image_path']);

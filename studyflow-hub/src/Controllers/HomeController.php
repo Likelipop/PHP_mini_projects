@@ -42,4 +42,54 @@ class HomeController extends BaseController
             'error' => flash_get('error'),
         ]);
     }
+
+    public function profile(): void
+    {
+        Session::requireLogin();
+        $this->render('profile', [
+            'success' => flash_get('success'),
+            'error' => flash_get('error'),
+        ]);
+    }
+
+    public function notifications(): void
+    {
+        Session::requireLogin();
+        
+        // Return a few mock notification items for HTMX dropdown body
+        $notifs = [
+            [
+                'icon' => 'fa-solid fa-circle-plus text-success',
+                'text' => 'Nguyễn Văn A đã tải lên <code>Lecture3.pdf</code>',
+                'time' => '3 phút trước'
+            ],
+            [
+                'icon' => 'fa-solid fa-pen text-warning',
+                'text' => 'Trần Thị B đã sửa ghi chú <code>Decision Tree</code>',
+                'time' => '25 phút trước'
+            ],
+            [
+                'icon' => 'fa-solid fa-link text-info',
+                'text' => 'Hệ thống đã liên kết tag <code>Transformer</code>',
+                'time' => '2 giờ trước'
+            ]
+        ];
+
+        // Send HTML output directly back
+        $html = '';
+        foreach ($notifs as $n) {
+            $html .= '<div class="list-group-item d-flex align-items-start gap-2 py-2.5 border-light-subtle">
+                <span class="' . $n['icon'] . ' mt-0.5 small"></span>
+                <div class="flex-grow-1">
+                    <span class="xsmall text-body">' . $n['text'] . '</span>
+                    <div class="text-muted xsmall font-monospace" style="font-size: 0.75rem;">' . $n['time'] . '</div>
+                </div>
+            </div>';
+        }
+        
+        // Trigger a custom client header to illuminate notification dot
+        header('HX-Trigger: {"newNotifications": true}');
+        echo $html;
+        exit;
+    }
 }

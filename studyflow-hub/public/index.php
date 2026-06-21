@@ -25,6 +25,7 @@ $router->post('/logout', 'AuthController@logout');
 
 // Main Pages
 $router->get('/', 'HomeController@index');
+$router->get('/profile', 'HomeController@profile');
 
 // StudyFlow Routes
 $router->get('/studyflows', 'StudyFlowController@index');
@@ -34,16 +35,17 @@ $router->get('/studyflow/{slug}', 'StudyFlowController@show');
 $router->post('/studyflow/{slug}/delete', 'StudyFlowController@delete');
 
 // Asset and Notes Routes
-$router->post('/studyflow/{slug}/assets/upload', 'AssetController@upload');
-$router->post('/studyflow/{slug}/assets/{id}/delete', 'AssetController@deleteAsset');
-$router->post('/studyflow/{slug}/notes/create', 'AssetController@createNote');
-$router->post('/studyflow/{slug}/notes/{id}/edit', 'AssetController@editNote');
+$router->post('/asset/upload', 'AssetController@uploadApi');
+$router->post('/asset/{id}/delete', 'AssetController@deleteAssetApi');
+$router->post('/note/create', 'AssetController@createNoteApi');
+$router->post('/note/{id}/save', 'AssetController@saveNoteApi');
 $router->get('/assets/download/{id}', 'AssetController@download');
 
 // API endpoints
 $router->get('/api/tags/search', 'AssetController@searchTags');
-$router->post('/api/fragments/create', 'AssetController@createFragmentApi');
+$router->post('/asset/fragment', 'AssetController@createFragmentApi');
 $router->get('/api/assets/{id}/fragments', 'AssetController@getFragmentsApi');
+$router->get('/api/notifications', 'HomeController@notifications');
 
 // Dispatch Request
 $method = Request::getMethod();

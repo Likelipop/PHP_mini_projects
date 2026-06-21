@@ -10,11 +10,23 @@ class Response
     {
         http_response_code($status);
         extract($data, EXTR_SKIP);
-        $viewPath = __DIR__ . '/../../views/' . $view . '.php';
-        if (file_exists($viewPath)) {
+        
+        // Resolve path to the page file
+        $viewPath = __DIR__ . '/../../views/pages/' . $view . '.php';
+        
+        if (!file_exists($viewPath)) {
+            self::text(500, "View not found: views/pages/$view.php");
+            return;
+        }
+
+        // Check if layout should be bypassed (for HTMX partial updates or explicit flag)
+        $isHtmx = isset($_SERVER['HTTP_HX_REQUEST']);
+        $bypassLayout = $isHtmx || (isset($noLayout) && $noLayout);
+
+        if ($bypassLayout) {
             require $viewPath;
         } else {
-            self::text(500, "View not found: $view");
+            require __DIR__ . '/../../views/layouts/main.php';
         }
     }
 

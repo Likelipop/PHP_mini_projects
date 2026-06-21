@@ -113,13 +113,40 @@ class StudyFlowController extends BaseController
 
         // Group assets into notes and resources
         $notes = [];
+        $resources = [];
         $resourcesByFolder = [];
 
         foreach ($assets as $asset) {
+            // Simplify tag structures into flat array of prefixes for easy JS checking
+            $flatTags = [];
+            if (isset($asset['tags'])) {
+                foreach ($asset['tags'] as $t) {
+                    $flatTags[] = $t['prefix'];
+                }
+            }
+            $asset['tags'] = $flatTags;
+
             if ($asset['type'] === 'note') {
                 $notes[] = $asset;
             } else {
                 $folder = $asset['folder_name'] ?: 'Root';
+                
+                // Hydrate presigned S3/MinIO download URLs
+                $asset['presigned_url'] = $this->assetService->getAssetUrl($asset['storage_key']);
+                
+                // Determine file type
+                $mime = strtolower($asset['mime_type'] ?? '');
+                if (str_contains($mime, 'image/')) {
+                    $asset['file_type'] = 'image';
+                } elseif ($mime === 'application/pdf' || str_ends_with(strtolower($asset['filename'] ?? ''), '.pdf')) {
+                    $asset['file_type'] = 'pdf';
+                } else {
+                    $asset['file_type'] = 'other';
+                }
+                
+                $asset['file_size'] = 1420000; // Mock file size in bytes (approx 1.4 MB)
+                
+                $resources[] = $asset;
                 $resourcesByFolder[$folder][] = $asset;
             }
         }
@@ -127,6 +154,7 @@ class StudyFlowController extends BaseController
         $this->render('studyflow/show', [
             'flow' => $flow,
             'notes' => $notes,
+            'resources' => $resources,
             'resourcesByFolder' => $resourcesByFolder,
             'tags' => $tags,
             'active_tag' => $tagFilter,
