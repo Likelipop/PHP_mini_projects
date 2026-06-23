@@ -26,7 +26,12 @@ class StudyFlowRepository
 
     public function findBySlug(string $slug): ?array
     {
-        $stmt = $this->db->prepare('SELECT * FROM studyflows WHERE slug = :slug');
+        $stmt = $this->db->prepare(
+            'SELECT sf.*, u.username, (SELECT COUNT(*) FROM pins WHERE studyflow_id = sf.id) as pin_count 
+             FROM studyflows sf 
+             LEFT JOIN users u ON sf.user_id = u.id 
+             WHERE sf.slug = :slug'
+        );
         $stmt->execute(['slug' => $slug]);
         $flow = $stmt->fetch();
         return $flow ? $flow : null;
@@ -43,8 +48,8 @@ class StudyFlowRepository
             'slug' => $data['slug'],
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
-            'is_pinned' => $data['is_pinned'] ?? false,
-            'is_public' => $data['is_public'] ?? true,
+            'is_pinned' => !empty($data['is_pinned']) ? 1 : 0,
+            'is_public' => !empty($data['is_public']) ? 1 : 0,
         ]);
         return (int) $this->db->lastInsertId();
     }
@@ -61,8 +66,8 @@ class StudyFlowRepository
             'slug' => $data['slug'],
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
-            'is_pinned' => $data['is_pinned'] ?? false,
-            'is_public' => $data['is_public'] ?? true,
+            'is_pinned' => !empty($data['is_pinned']) ? 1 : 0,
+            'is_public' => !empty($data['is_public']) ? 1 : 0,
         ]);
     }
 
@@ -72,7 +77,7 @@ class StudyFlowRepository
         return $stmt->execute(['id' => $id]);
     }
 
-    public function getPaginated(string $search = '', string $sortBy = 'created_at', string $sortDir = 'desc', int $page = 1, int $perPage = 6): array
+    public function getPaginated(string $search = '', string $sortBy = 'created_at', string $sortDir = 'desc', int $page = 1, int $perPage = 6, ?int $userId = null): array
     {
         $offset = ($page - 1) * $perPage;
         
@@ -90,6 +95,11 @@ class StudyFlowRepository
         if ($search !== '') {
             $whereClause .= ' AND (title ILIKE :search OR description ILIKE :search)';
             $params['search'] = '%' . $search . '%';
+        }
+
+        if ($userId !== null) {
+            $whereClause .= ' AND user_id = :user_id';
+            $params['user_id'] = $userId;
         }
 
         // Count total

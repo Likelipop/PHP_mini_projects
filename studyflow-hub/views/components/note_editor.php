@@ -4,7 +4,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
 
-<div class="row g-3 notes-layout" x-data="noteEditorData()">
+<div class="row g-3 notes-layout" x-data="noteEditorData()" @select-note-by-id.window="const found = notes.find(n => n.id == $event.detail.id); if(found) selectNote(found);">
     <!-- Left panel: Notes List -->
     <div class="col-md-3 border-end pe-3" style="max-height: calc(100vh - 220px); overflow-y: auto;">
         <div class="d-grid mb-3">
@@ -177,25 +177,34 @@
                 // 2. Custom Resource Embedding parsing (@resource_key)
                 // Convert @filename to image tags or links using S3 resources database
                 const resourcesList = window.resourcesList || [];
-                renderedHtml = renderedHtml.replace(/@([a-zA-Z0-9_\-\.\u00C0-\u1EF9]+)/g, (match, key) => {
-                    const res = resourcesList.find(r => r.title.includes(key) || r.id == key);
+                renderedHtml = renderedHtml.replace(/@([a-zA-Z0-9_\-\.\u00C0-\u1EF9]+?)(?:_page|_p|#page=)?([0-9]+)?\b/g, (match, key, page) => {
+                    const res = resourcesList.find(r => r.title.toLowerCase().includes(key.toLowerCase()) || r.id == key);
                     if (res) {
+                        const pageNum = page ? parseInt(page) : 1;
                         if (res.file_type === 'image') {
                             return `<div class="embedded-resource p-2 border rounded my-2 text-center bg-body-tertiary">
                                 <img src="${res.presigned_url}" class="img-fluid rounded border mb-1" style="max-height: 200px;">
                                 <div class="xsmall text-muted font-monospace"><i class="fa-regular fa-image"></i> ${res.title}</div>
                             </div>`;
-                        } else {
+                        } else if (res.file_type === 'pdf') {
                             return `<div class="embedded-resource p-2 border rounded my-2 bg-body-tertiary d-flex align-items-center justify-content-between">
                                 <div>
                                     <i class="fa-solid fa-file-pdf text-danger me-2"></i>
+                                    <span class="small fw-bold">${res.title} (Trang ${pageNum})</span>
+                                </div>
+                                <a href="${res.presigned_url}#page=${pageNum}" target="_blank" class="btn btn-xs btn-outline-primary"><i class="fa-solid fa-eye"></i> Xem file</a>
+                            </div>`;
+                        } else {
+                            return `<div class="embedded-resource p-2 border rounded my-2 bg-body-tertiary d-flex align-items-center justify-content-between">
+                                <div>
+                                    <i class="fa-solid fa-file-lines text-info me-2"></i>
                                     <span class="small fw-bold">${res.title}</span>
                                 </div>
                                 <a href="${res.presigned_url}" target="_blank" class="btn btn-xs btn-outline-primary"><i class="fa-solid fa-eye"></i> Xem file</a>
                             </div>`;
                         }
                     }
-                    return `<span class="badge bg-secondary-subtle text-secondary border font-monospace">@${key}</span>`;
+                    return `<span class="badge bg-secondary-subtle text-secondary border font-monospace">@${key}${page ? '_p' + page : ''}</span>`;
                 });
                 
                 previewPane.innerHTML = renderedHtml;

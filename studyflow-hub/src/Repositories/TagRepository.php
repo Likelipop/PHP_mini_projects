@@ -49,7 +49,17 @@ class TagRepository
 
     public function searchTags(string $query): array
     {
-        $stmt = $this->db->prepare('SELECT * FROM tags WHERE prefix ILIKE :query ORDER BY prefix LIMIT 10');
+        $stmt = $this->db->prepare(
+            "SELECT t.*, 
+                    COUNT(CASE WHEN a.type = 'resource' THEN 1 END) as resource_count,
+                    COUNT(CASE WHEN a.type = 'note' THEN 1 END) as note_count
+             FROM tags t
+             LEFT JOIN asset_tags at ON t.id = at.tag_id
+             LEFT JOIN assets a ON at.asset_id = a.id
+             WHERE t.prefix ILIKE :query
+             GROUP BY t.id
+             ORDER BY t.prefix LIMIT 10"
+        );
         $stmt->execute(['query' => '%' . strtolower($query) . '%']);
         return $stmt->fetchAll();
     }

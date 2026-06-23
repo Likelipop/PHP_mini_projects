@@ -30,28 +30,59 @@ class AssetController extends BaseController
 
     public function uploadApi(): void
     {
+        // Early check: if post_max_size was exceeded, $_POST and $_FILES will be empty
+        // This must be checked BEFORE CsrfMiddleware which would fail with a text 403
+        if (empty($_POST) && empty($_FILES)) {
+            $this->json(413, [
+                'success' => false, 
+                'error' => 'Kích thước yêu cầu vượt quá giới hạn máy chủ (post_max_size). Hãy tải lên file nhỏ hơn.'
+            ]);
+            return;
+        }
+
         CsrfMiddleware::handle();
         $studyflowId = (int)Request::input('studyflow_id');
         $file = Request::file('file');
         $folder = Request::input('folder_name', 'Root');
         $tagsString = Request::input('tags', '');
+        $title = Request::input('title', '');
         
-        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
-            $this->json(400, ['success' => false, 'error' => 'Tệp tải lên không hợp lệ hoặc bị lỗi.']);
+        if (!$file || !isset($file['error'])) {
+            $this->json(400, ['success' => false, 'error' => 'Không nhận được tệp tin.']);
             return;
         }
 
-        // Auto categorize folder based on filename extension
-        $filename = basename($file['name']);
-        if (str_ends_with(strtolower($filename), '.pdf')) {
-            $folder = 'Slides';
-        } elseif (preg_match('/\.(png|jpg|jpeg|gif|svg)$/i', $filename)) {
-            $folder = 'Images';
-        } else {
-            $folder = 'Assignments';
+        // Handle specific PHP upload error codes
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $errorMessages = [
+                UPLOAD_ERR_INI_SIZE   => 'Tệp vượt quá giới hạn upload_max_filesize (' . ini_get('upload_max_filesize') . ').',
+                UPLOAD_ERR_FORM_SIZE  => 'Tệp vượt quá giới hạn MAX_FILE_SIZE trong form.',
+                UPLOAD_ERR_PARTIAL    => 'Tệp chỉ được tải lên một phần. Vui lòng thử lại.',
+                UPLOAD_ERR_NO_FILE    => 'Không có tệp tin nào được tải lên.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Thiếu thư mục tạm trên máy chủ.',
+                UPLOAD_ERR_CANT_WRITE => 'Không thể ghi tệp tin lên đĩa.',
+                UPLOAD_ERR_EXTENSION  => 'Một extension PHP đã dừng việc tải tệp.',
+            ];
+            $msg = $errorMessages[$file['error']] ?? 'Lỗi tải lên không xác định (code: ' . $file['error'] . ').';
+            $this->json(400, ['success' => false, 'error' => $msg]);
+            return;
         }
 
-        $tags = $tagsString !== '' ? array_map('trim', explode(',', $tagsString)) : ['untagged'];
+        if ($file['size'] > 26214400) { // 25MB limit
+            $this->json(400, ['success' => false, 'error' => 'Kích thước tệp vượt quá 25MB.']);
+            return;
+        }
+
+        // If title is empty, use filename
+        if (trim($title) === '') {
+            $title = pathinfo($file['name'], PATHINFO_FILENAME);
+        }
+
+        $tags = $tagsString !== '' ? array_map('trim', explode(',', $tagsString)) : [];
+        if (empty($tags)) {
+            // Default to title as tag
+            $tags = [strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', trim($title)))];
+        }
 
         $result = $this->assetService->createResource($studyflowId, $file, $folder, $tags);
 
@@ -69,7 +100,7 @@ class AssetController extends BaseController
             } else {
                 $asset['file_type'] = 'other';
             }
-            $asset['file_size'] = 1420000;
+            $asset['file_size'] = $file['size'];
 
             $this->json(200, ['success' => true, 'asset' => $asset]);
         } else {
@@ -172,5 +203,79 @@ class AssetController extends BaseController
         }
         
         $this->json(200, $fragments);
+    }
+
+    public function getRelatedAssetsApi(): void
+    {
+        $flowId = (int)Request::input('flow_id');
+        $tag = Request::input('tag', '');
+        
+        $results = $this->assetService->getRelatedAssets($flowId, $tag);
+        $this->json(200, $results);
+    }
+
+    public function updateAssetTagsApi(string $id): void
+    {
+        CsrfMiddleware::handle();
+        $tagsString = Request::input('tags', '');
+        $tags = $tagsString !== '' ? array_map('trim', explode(',', $tagsString)) : [];
+        if (empty($tags)) {
+            $tags = ['untagged'];
+        }
+        
+        $this->assetService->updateAssetTags((int)$id, $tags);
+        $this->json(200, ['success' => true]);
+    }
+
+    public function makeFolderApi(): void
+    {
+        CsrfMiddleware::handle();
+        $studyflowId = (int)Request::input('studyflow_id');
+        $title = Request::input('title', '');
+        $description = Request::input('description', null);
+        
+        $result = $this->assetService->createFolder($studyflowId, $title, $description);
+        $this->json($result['success'] ? 200 : 400, $result);
+    }
+
+    public function renameFolderApi(string $id): void
+    {
+        CsrfMiddleware::handle();
+        $newName = Request::input('new_name', '');
+        
+        $result = $this->assetService->updateFolderName((int)$id, $newName);
+        $this->json($result['success'] ? 200 : 400, $result);
+    }
+
+    public function renameAssetApi(string $id): void
+    {
+        CsrfMiddleware::handle();
+        $newTitle = Request::input('new_title', '');
+        
+        $result = $this->assetService->updateAssetTitle((int)$id, $newTitle);
+        $this->json($result['success'] ? 200 : 400, $result);
+    }
+
+    public function moveAssetApi(string $id): void
+    {
+        CsrfMiddleware::handle();
+        $folderName = Request::input('folder_name', '');
+        
+        $result = $this->assetService->moveAsset((int)$id, $folderName);
+        $this->json($result['success'] ? 200 : 400, $result);
+    }
+
+    public function reorderAssetsApi(): void
+    {
+        CsrfMiddleware::handle();
+        $order = json_decode(Request::input('order', '[]'), true);
+        
+        if (!is_array($order) || empty($order)) {
+            $this->json(400, ['success' => false, 'error' => 'Danh sách sắp xếp không hợp lệ.']);
+            return;
+        }
+
+        $result = $this->assetService->reorderAssets($order);
+        $this->json($result['success'] ? 200 : 400, $result);
     }
 }

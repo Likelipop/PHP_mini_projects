@@ -94,4 +94,9 @@ class UserService
     {
         Session::logout();
     }
+
+    public function getUserStats(int $userId): array
+    {
+        return $this->userRepository->getUserStats($userId);
+    }
 }

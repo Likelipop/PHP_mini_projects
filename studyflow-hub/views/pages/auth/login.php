@@ -6,6 +6,13 @@
             <p class="text-muted small">Chào mừng bạn quay lại với StudyFlow Hub</p>
         </div>
 
+        <?php if (isset($error) && $error !== ''): ?>
+            <div class="alert alert-danger alert-dismissible fade show small py-2 px-3 mb-3" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> <?= h($error) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="padding: 0.75rem 1rem; font-size: 0.5rem;"></button>
+            </div>
+        <?php endif; ?>
+
         <form action="/login" method="POST">
             <!-- CSRF field -->
             <?= csrf_field() ?>

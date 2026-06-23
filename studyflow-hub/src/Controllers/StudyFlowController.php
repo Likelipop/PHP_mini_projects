@@ -39,8 +39,11 @@ class StudyFlowController extends BaseController
         if ($page < 1) {
             $page = 1;
         }
+        
+        $userIdInput = Request::input('user_id');
+        $userId = ($userIdInput !== null && $userIdInput !== '') ? (int)$userIdInput : null;
 
-        $paginated = $this->studyFlowService->getPaginatedStudyFlows($search, $sortBy, $sortDir, $page, 6);
+        $paginated = $this->studyFlowService->getPaginatedStudyFlows($search, $sortBy, $sortDir, $page, 6, $userId);
 
         $this->render('studyflow/index', [
             'flows' => $paginated['items'],
@@ -50,6 +53,7 @@ class StudyFlowController extends BaseController
             'search' => $search,
             'sort_by' => $sortBy,
             'sort_dir' => $sortDir,
+            'user_id' => $userId,
             'success' => flash_get('success'),
             'error' => flash_get('error'),
         ]);
@@ -58,6 +62,8 @@ class StudyFlowController extends BaseController
     public function showCreate(): void
     {
         $this->render('studyflow/create', [
+            'success' => flash_get('success'),
+            'error' => flash_get('error'),
             'errors' => flash_get('errors', []),
             'old' => flash_get('old', []),
         ]);
@@ -84,10 +90,17 @@ class StudyFlowController extends BaseController
             $this->redirect('/studyflow/' . $result['slug']);
             exit;
         } else {
-            $this->render('studyflow/create', [
-                'errors' => $result['errors'],
-                'old' => $data,
-            ]);
+            flash_set('errors', $result['errors']);
+            flash_set('old', $data);
+            
+            // Lấy lỗi đầu tiên để hiển thị thành flash error chung (giống yêu cầu TC04)
+            if (!empty($result['errors'])) {
+                $firstError = reset($result['errors']);
+                flash_set('error', $firstError);
+            }
+            
+            $this->redirect('/studyflows/create');
+            exit;
         }
     }
 
@@ -113,10 +126,11 @@ class StudyFlowController extends BaseController
 
         $tags = $this->tagService->getTagsForStudyFlow((int)$flow['id']);
 
-        // Group assets into notes and resources
+        // Group assets into notes, folders, and resources
         $notes = [];
         $resources = [];
         $resourcesByFolder = [];
+        $folderNames = [];
 
         foreach ($assets as $asset) {
             // Simplify tag structures into flat array of prefixes for easy JS checking
@@ -130,11 +144,13 @@ class StudyFlowController extends BaseController
 
             if ($asset['type'] === 'note') {
                 $notes[] = $asset;
+            } elseif ($asset['type'] === 'folder') {
+                $folderNames[] = $asset['title'];
             } else {
                 $folder = $asset['folder_name'] ?: 'Root';
                 
                 // Hydrate presigned S3/MinIO download URLs
-                $asset['presigned_url'] = $this->assetService->getAssetUrl($asset['storage_key']);
+                $asset['presigned_url'] = $this->assetService->getAssetUrl($asset['storage_key'] ?? '');
                 
                 // Determine file type
                 $mime = strtolower($asset['mime_type'] ?? '');
@@ -158,6 +174,7 @@ class StudyFlowController extends BaseController
             'notes' => $notes,
             'resources' => $resources,
             'resourcesByFolder' => $resourcesByFolder,
+            'folderNames' => $folderNames,
             'tags' => $tags,
             'active_tag' => $tagFilter,
             'active_search' => $searchFilter,

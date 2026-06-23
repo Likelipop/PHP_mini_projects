@@ -37,7 +37,7 @@
                                 <div class="card h-100 shadow-sm border border-secondary-subtle">
                                     <div class="card-body d-flex flex-column">
                                         <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle small">/<?= h($flow['slug']) ?></span>
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle small text-truncate" style="max-width: 80%;">/<?= h($flow['slug']) ?></span>
                                             <?php if ($flow['is_pinned']): ?>
                                                 <span class="text-warning small" title="Pinned"><i class="fa-solid fa-thumbtack"></i></span>
                                             <?php endif; ?>
@@ -108,9 +108,9 @@
                 <div class="card-body">
                     <div class="d-flex flex-wrap gap-2">
                         <?php foreach ($popularTags as $tag): ?>
-                            <a href="/studyflows?search=<?= urlencode($tag['prefix']) ?>" class="btn btn-sm btn-light border d-flex align-items-center gap-1">
+                            <a href="/studyflows?search=<?= urlencode($tag['prefix']) ?>" class="btn btn-sm btn-secondary d-flex align-items-center gap-1">
                                 <span class="text-primary font-monospace">#</span>
-                                <span class="fw-semibold text-body"><?= h($tag['name']) ?></span>
+                                <span class="fw-semibold"><?= h($tag['name']) ?></span>
                             </a>
                         <?php endforeach; ?>
                     </div>

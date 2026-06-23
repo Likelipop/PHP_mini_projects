@@ -6,6 +6,8 @@ namespace StudyFlow\Controllers;
 
 use StudyFlow\Services\StudyFlowService;
 use StudyFlow\Core\Session;
+use StudyFlow\Core\Response;
+use StudyFlow\Core\Database;
 
 class HomeController extends BaseController
 {
@@ -46,7 +48,12 @@ class HomeController extends BaseController
     public function profile(): void
     {
         Session::requireLogin();
+        
+        $userService = new \StudyFlow\Services\UserService();
+        $stats = $userService->getUserStats((int)Session::get('user_id'));
+        
         $this->render('profile', [
+            'stats' => $stats,
             'success' => flash_get('success'),
             'error' => flash_get('error'),
         ]);
@@ -91,5 +98,24 @@ class HomeController extends BaseController
         header('HX-Trigger: {"newNotifications": true}');
         echo $html;
         exit;
+    }
+
+    public function searchApi(): void
+    {
+        $query = \StudyFlow\Core\Request::input('q', '');
+        $assetRepo = new \StudyFlow\Repositories\AssetRepository();
+        $results = $assetRepo->searchEverywhere($query);
+        $this->json(200, $results);
+    }
+
+    public function health(): void
+    {
+        try {
+            $db = Database::getConnection();
+            $db->query('SELECT 1');
+            Response::json(200, ['status' => 'ok', 'database' => 'connected']);
+        } catch (\Exception $e) {
+            Response::json(500, ['status' => 'error', 'database' => 'disconnected', 'error' => $e->getMessage()]);
+        }
     }
 }

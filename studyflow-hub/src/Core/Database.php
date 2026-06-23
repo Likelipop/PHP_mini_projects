@@ -29,7 +29,8 @@ class Database
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 ]);
             } catch (PDOException $e) {
-                Response::text(500, 'Database Connection Failed: ' . $e->getMessage());
+                // Log the real error to a file if needed, but do NOT show to user (TC15 Requirement)
+                Response::text(500, 'Database Connection Failed: Hệ thống đang bảo trì hoặc mất kết nối CSDL. Vui lòng thử lại sau.');
                 exit;
             }
         }

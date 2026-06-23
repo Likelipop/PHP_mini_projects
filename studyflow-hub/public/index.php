@@ -26,6 +26,7 @@ $router->post('/logout', 'AuthController@logout');
 // Main Pages
 $router->get('/', 'HomeController@index');
 $router->get('/profile', 'HomeController@profile');
+$router->get('/health', 'HomeController@health');
 
 // StudyFlow Routes
 $router->get('/studyflows', 'StudyFlowController@index');
@@ -42,8 +43,17 @@ $router->post('/note/{id}/save', 'AssetController@saveNoteApi');
 $router->get('/assets/download/{id}', 'AssetController@download');
 
 // API endpoints
+$router->post('/api/folder/create', 'AssetController@makeFolderApi');
+$router->post('/api/folder/{id}/rename', 'AssetController@renameFolderApi');
+$router->post('/asset/{id}/rename', 'AssetController@renameAssetApi');
+$router->post('/asset/{id}/move', 'AssetController@moveAssetApi');
+$router->post('/api/assets/reorder', 'AssetController@reorderAssetsApi');
+
+$router->get('/api/search', 'HomeController@searchApi');
 $router->get('/api/tags/search', 'AssetController@searchTags');
+$router->get('/api/tags/related', 'AssetController@getRelatedAssetsApi');
 $router->post('/asset/fragment', 'AssetController@createFragmentApi');
+$router->post('/api/assets/{id}/tags', 'AssetController@updateAssetTagsApi');
 $router->get('/api/assets/{id}/fragments', 'AssetController@getFragmentsApi');
 $router->get('/api/notifications', 'HomeController@notifications');
 

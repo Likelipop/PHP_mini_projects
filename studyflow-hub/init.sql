@@ -25,11 +25,13 @@ CREATE TABLE IF NOT EXISTS studyflows (
 CREATE TABLE IF NOT EXISTS assets (
     id SERIAL PRIMARY KEY,
     studyflow_id INT NOT NULL REFERENCES studyflows(id) ON DELETE CASCADE,
-    type VARCHAR(20) NOT NULL, -- 'resource', 'note'
+    type VARCHAR(20) NOT NULL, -- 'resource', 'note', 'folder'
     title VARCHAR(255) NOT NULL,
     content TEXT, -- Markdown note body or general text content
     storage_key VARCHAR(512), -- MinIO object path for file uploads
     mime_type VARCHAR(100),
+    sort_order INT DEFAULT 0,
+    tags JSONB, -- JSON array of tags for faster indexing
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -38,7 +40,8 @@ CREATE TABLE IF NOT EXISTS assets (
 CREATE TABLE IF NOT EXISTS resource_metadata (
     asset_id INT PRIMARY KEY REFERENCES assets(id) ON DELETE CASCADE,
     filename VARCHAR(255) NOT NULL,
-    folder_name VARCHAR(100) DEFAULT 'Root' -- 'Slides', 'Images', 'Assignments'
+    folder_name VARCHAR(100) DEFAULT 'Root', -- 'Slides', 'Images', 'Assignments'
+    description TEXT
 );
 
 -- Note Metadata Table
@@ -75,3 +78,12 @@ CREATE TABLE IF NOT EXISTS asset_fragments (
 
 -- Insert a default tag 'untagged'
 INSERT INTO tags (name, prefix) VALUES ('untagged', 'untagged') ON CONFLICT DO NOTHING;
+
+-- Pins Table (for pinning/favoriting StudyFlows)
+CREATE TABLE IF NOT EXISTS pins (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    studyflow_id INT NOT NULL REFERENCES studyflows(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, studyflow_id)
+);

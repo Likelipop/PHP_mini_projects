@@ -40,14 +40,14 @@
     </div>
 
     <!-- Cards grid -->
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 studyflow-grid">
+    <div class="studyflow-grid mb-4">
         <?php if (!empty($flows)): ?>
             <?php foreach ($flows as $flow): ?>
-                <div class="col">
+                <div>
                     <div class="card h-100 shadow-sm border border-secondary-subtle">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="badge bg-light text-body border font-monospace xsmall">/<?= h($flow['slug']) ?></span>
+                                <span class="badge badge-slug badge-xs text-truncate" style="max-width: 80%;">/<?= h($flow['slug']) ?></span>
                                 <?php if ($flow['is_pinned']): ?>
                                     <span class="text-warning small"><i class="fa-solid fa-thumbtack"></i></span>
                                 <?php endif; ?>
@@ -80,19 +80,22 @@
     </div>
 
     <!-- Pagination -->
+    <?php 
+        $userQuery = isset($user_id) && $user_id ? '&user_id=' . h((string)$user_id) : '';
+    ?>
     <?php if ($total_pages > 1): ?>
         <nav aria-label="Page navigation" class="d-flex justify-content-center mt-4">
             <ul class="pagination pagination-sm">
                 <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="/studyflows?search=<?= urlencode($search) ?>&sort_by=<?= h($sort_by) ?>&sort_dir=<?= h($sort_dir) ?>&page=<?= $page - 1 ?>"><i class="fa-solid fa-chevron-left"></i></a>
+                    <a class="page-link" href="/studyflows?search=<?= urlencode($search) ?>&sort_by=<?= h($sort_by) ?>&sort_dir=<?= h($sort_dir) ?><?= $userQuery ?>&page=<?= $page - 1 ?>"><i class="fa-solid fa-chevron-left"></i></a>
                 </li>
                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                     <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                        <a class="page-link" href="/studyflows?search=<?= urlencode($search) ?>&sort_by=<?= h($sort_by) ?>&sort_dir=<?= h($sort_dir) ?>&page=<?= $i ?>"><?= $i ?></a>
+                        <a class="page-link" href="/studyflows?search=<?= urlencode($search) ?>&sort_by=<?= h($sort_by) ?>&sort_dir=<?= h($sort_dir) ?><?= $userQuery ?>&page=<?= $i ?>"><?= $i ?></a>
                     </li>
                 <?php endfor; ?>
                 <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
-                    <a class="page-link" href="/studyflows?search=<?= urlencode($search) ?>&sort_by=<?= h($sort_by) ?>&sort_dir=<?= h($sort_dir) ?>&page=<?= $page + 1 ?>"><i class="fa-solid fa-chevron-right"></i></a>
+                    <a class="page-link" href="/studyflows?search=<?= urlencode($search) ?>&sort_by=<?= h($sort_by) ?>&sort_dir=<?= h($sort_dir) ?><?= $userQuery ?>&page=<?= $page + 1 ?>"><i class="fa-solid fa-chevron-right"></i></a>
                 </li>
             </ul>
         </nav>

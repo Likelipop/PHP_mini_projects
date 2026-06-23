@@ -51,6 +51,23 @@
 
                 <!-- User profile/avatar dropdown -->
                 <?php if (is_logged_in()): ?>
+                    <!-- Notification Dropdown -->
+                    <div class="dropdown me-1" x-data="{ hasNew: false }" x-init="window.addEventListener('newNotifications', () => hasNew = true)">
+                        <button class="btn btn-link nav-link p-0 position-relative" id="navbarNotificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" 
+                                hx-get="/api/notifications" hx-trigger="click" hx-target="#notification-list" @click="hasNew = false" title="Thông báo">
+                            <i class="fa-regular fa-bell fs-6 text-body"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" x-show="hasNew">
+                                <span class="visually-hidden">New alerts</span>
+                            </span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-sm p-0 border-secondary-subtle" aria-labelledby="navbarNotificationDropdown" style="width: 280px; font-size: 0.85rem; z-index: 1050;">
+                            <div class="dropdown-header py-2 border-bottom bg-body-tertiary fw-bold text-body"><i class="fa-regular fa-bell me-1 text-primary"></i> Thông báo</div>
+                            <div id="notification-list" class="list-group list-group-flush minimal-scroll" style="max-height: 250px; overflow-y: auto;">
+                                <div class="p-3 text-center text-muted small"><span class="spinner-border spinner-border-sm me-2"></span>Đang tải thông báo...</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-body" id="navbarUserDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold me-1" style="width: 28px; height: 28px; font-size: 0.8rem;">

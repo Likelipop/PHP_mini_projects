@@ -106,9 +106,9 @@ class StudyFlowService
         return $this->studyFlowRepository->delete($id);
     }
 
-    public function getPaginatedStudyFlows(string $search = '', string $sortBy = 'created_at', string $sortDir = 'desc', int $page = 1, int $perPage = 6): array
+    public function getPaginatedStudyFlows(string $search = '', string $sortBy = 'created_at', string $sortDir = 'desc', int $page = 1, int $perPage = 6, ?int $userId = null): array
     {
-        return $this->studyFlowRepository->getPaginated($search, $sortBy, $sortDir, $page, $perPage);
+        return $this->studyFlowRepository->getPaginated($search, $sortBy, $sortDir, $page, $perPage, $userId);
     }
 
     public function getTrendingStudyFlows(int $limit = 4): array

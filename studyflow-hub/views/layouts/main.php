@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= csrf_token() ?>">
     <title><?= isset($title) ? h($title) . ' - StudyFlow Hub' : 'StudyFlow Hub - AI-powered Study Graph' ?></title>
     
     <!-- Bootstrap 5 CSS -->
@@ -25,7 +26,8 @@
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     
-    <!-- AlpineJS (defer must be loaded after store initializations) -->
+    <!-- AlpineJS & Plugins -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     
     <!-- Popper.js & Tippy.js (tooltip package) -->

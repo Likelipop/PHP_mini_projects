@@ -1,3 +1,14 @@
+<?php
+$tagNames = array_column($stats['top_tags'] ?? [], 'name');
+$tagCounts = array_map('intval', array_column($stats['top_tags'] ?? [], 'count'));
+if (empty($tagNames)) {
+    $tagNames = ['Chưa có tag nào'];
+    $tagCounts = [0];
+    $tagColors = ['#6c757d'];
+} else {
+    $tagColors = ['#0969da', '#238636', '#d29922', '#8a63d2', '#f7786b'];
+}
+?>
 <div class="container py-4" x-data="profileDashboardData()">
     <!-- Profile header -->
     <div class="card shadow-sm border border-secondary-subtle mb-4 p-4" style="background: linear-gradient(135deg, var(--bg-card) 0%, rgba(9, 105, 218, 0.04) 100%);">
@@ -21,7 +32,7 @@
                         <span class="xsmall text-muted fw-bold">TÀI NGUYÊN (S3)</span>
                         <span class="text-primary"><i class="fa-solid fa-file-shield"></i></span>
                     </div>
-                    <h3 class="fw-bold mb-0">12</h3>
+                    <h3 class="fw-bold mb-0"><?= (int)($stats['resources_count'] ?? 0) ?></h3>
                     <p class="xsmall text-muted mb-0 mt-1">Đã tải lên MinIO/S3</p>
                 </div>
             </div>
@@ -33,7 +44,7 @@
                         <span class="xsmall text-muted fw-bold">GHI CHÚ (OBSIDIAN)</span>
                         <span class="text-warning"><i class="fa-regular fa-clipboard"></i></span>
                     </div>
-                    <h3 class="fw-bold mb-0">8</h3>
+                    <h3 class="fw-bold mb-0"><?= (int)($stats['notes_count'] ?? 0) ?></h3>
                     <p class="xsmall text-muted mb-0 mt-1">Ghi chú Markdown</p>
                 </div>
             </div>
@@ -45,7 +56,7 @@
                         <span class="xsmall text-muted fw-bold">TAG BREADCRUMBS</span>
                         <span class="text-success"><i class="fa-solid fa-tags"></i></span>
                     </div>
-                    <h3 class="fw-bold mb-0">15</h3>
+                    <h3 class="fw-bold mb-0"><?= (int)($stats['tags_count'] ?? 0) ?></h3>
                     <p class="xsmall text-muted mb-0 mt-1">Chủ đề phân cấp</p>
                 </div>
             </div>
@@ -57,7 +68,7 @@
                         <span class="xsmall text-muted fw-bold">PINS & LƯỢT THÍCH</span>
                         <span class="text-danger"><i class="fa-solid fa-thumbtack"></i></span>
                     </div>
-                    <h3 class="fw-bold mb-0">3</h3>
+                    <h3 class="fw-bold mb-0"><?= (int)($stats['pins_count'] ?? 0) ?></h3>
                     <p class="xsmall text-muted mb-0 mt-1">Pinned StudyFlows</p>
                 </div>
             </div>
@@ -111,16 +122,10 @@
                 new Chart(pieCtx, {
                     type: 'doughnut',
                     data: {
-                        labels: ['Machine Learning', 'CNN', 'Transformer', 'Web/PHP', 'Mathematics'],
+                        labels: <?= json_encode($tagNames) ?>,
                         datasets: [{
-                            data: [8, 5, 4, 3, 2],
-                            backgroundColor: [
-                                '#0969da',
-                                '#238636',
-                                '#d29922',
-                                '#8a63d2',
-                                '#f7786b'
-                            ],
+                            data: <?= json_encode($tagCounts) ?>,
+                            backgroundColor: <?= json_encode($tagColors) ?>,
                             borderWidth: 1
                         }]
                     },
@@ -146,7 +151,15 @@
                         labels: ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'],
                         datasets: [{
                             label: 'Tài liệu tải lên',
-                            data: [2, 1, 5, 2, 4, 0, 1],
+                            data: [
+                                <?= (int)($stats['weekly_activity']['Mon'] ?? 0) ?>,
+                                <?= (int)($stats['weekly_activity']['Tue'] ?? 0) ?>,
+                                <?= (int)($stats['weekly_activity']['Wed'] ?? 0) ?>,
+                                <?= (int)($stats['weekly_activity']['Thu'] ?? 0) ?>,
+                                <?= (int)($stats['weekly_activity']['Fri'] ?? 0) ?>,
+                                <?= (int)($stats['weekly_activity']['Sat'] ?? 0) ?>,
+                                <?= (int)($stats['weekly_activity']['Sun'] ?? 0) ?>
+                            ],
                             borderColor: '#238636',
                             backgroundColor: 'rgba(35, 134, 54, 0.1)',
                             fill: true,

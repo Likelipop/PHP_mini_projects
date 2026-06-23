@@ -52,8 +52,8 @@ class AssetRepository
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
-                'INSERT INTO assets (studyflow_id, type, title, content, storage_key, mime_type) 
-                 VALUES (:studyflow_id, \'resource\', :title, :content, :storage_key, :mime_type)'
+                'INSERT INTO assets (studyflow_id, type, title, content, storage_key, mime_type, tags) 
+                 VALUES (:studyflow_id, \'resource\', :title, :content, :storage_key, :mime_type, :tags)'
             );
             $stmt->execute([
                 'studyflow_id' => $data['studyflow_id'],
@@ -61,6 +61,7 @@ class AssetRepository
                 'content' => $data['content'] ?? null,
                 'storage_key' => $data['storage_key'],
                 'mime_type' => $data['mime_type'],
+                'tags' => json_encode($data['tags'] ?? ['untagged']),
             ]);
             $assetId = (int)$this->db->lastInsertId();
 
@@ -91,13 +92,14 @@ class AssetRepository
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
-                'INSERT INTO assets (studyflow_id, type, title, content) 
-                 VALUES (:studyflow_id, \'note\', :title, :content)'
+                'INSERT INTO assets (studyflow_id, type, title, content, tags) 
+                 VALUES (:studyflow_id, \'note\', :title, :content, :tags)'
             );
             $stmt->execute([
                 'studyflow_id' => $data['studyflow_id'],
                 'title' => $data['title'],
                 'content' => $data['content'],
+                'tags' => json_encode($data['tags'] ?? ['untagged']),
             ]);
             $assetId = (int)$this->db->lastInsertId();
 
@@ -152,6 +154,10 @@ class AssetRepository
 
     public function assignTags(int $assetId, array $tagNames): void
     {
+        // Update tags column in JSON format
+        $stmtJson = $this->db->prepare('UPDATE assets SET tags = :tags WHERE id = :id');
+        $stmtJson->execute(['tags' => json_encode($tagNames), 'id' => $assetId]);
+
         // First delete existing tags
         $stmtDel = $this->db->prepare('DELETE FROM asset_tags WHERE asset_id = :asset_id');
         $stmtDel->execute(['asset_id' => $assetId]);
@@ -288,5 +294,216 @@ class AssetRepository
         );
         $stmt->execute(['asset_id' => $assetId]);
         return $stmt->fetchAll();
+    }
+
+    public function searchEverywhere(string $query): array
+    {
+        $param = '%' . $query . '%';
+        $results = [
+            'notes' => [],
+            'resources' => [],
+            'tags' => [],
+            'studyflows' => [],
+        ];
+
+        // 1. Search Notes
+        $stmtNotes = $this->db->prepare(
+            "SELECT a.id, a.title, a.content, sf.slug as flow_slug
+             FROM assets a
+             JOIN studyflows sf ON a.studyflow_id = sf.id
+             WHERE a.type = 'note' AND (a.title ILIKE :q OR a.content ILIKE :q)
+             LIMIT 10"
+        );
+        $stmtNotes->execute(['q' => $param]);
+        $results['notes'] = $stmtNotes->fetchAll();
+
+        // 2. Search Resources
+        $stmtRes = $this->db->prepare(
+            "SELECT a.id, a.title, rm.folder_name, sf.slug as flow_slug
+             FROM assets a
+             JOIN resource_metadata rm ON a.id = rm.asset_id
+             JOIN studyflows sf ON a.studyflow_id = sf.id
+             WHERE a.type = 'resource' AND (a.title ILIKE :q OR rm.folder_name ILIKE :q)
+             LIMIT 10"
+        );
+        $stmtRes->execute(['q' => $param]);
+        $results['resources'] = $stmtRes->fetchAll();
+
+        // 3. Search Tags
+        $stmtTags = $this->db->prepare(
+            "SELECT t.id, t.name, t.prefix 
+             FROM tags t 
+             WHERE t.name ILIKE :q OR t.prefix ILIKE :q
+             LIMIT 10"
+        );
+        $stmtTags->execute(['q' => $param]);
+        $results['tags'] = $stmtTags->fetchAll();
+
+        // 4. Search StudyFlows
+        $stmtFlows = $this->db->prepare(
+            "SELECT sf.id, sf.title, sf.slug, sf.description 
+             FROM studyflows sf 
+             WHERE sf.title ILIKE :q OR sf.description ILIKE :q
+             LIMIT 10"
+        );
+        $stmtFlows->execute(['q' => $param]);
+        $results['studyflows'] = $stmtFlows->fetchAll();
+
+        return $results;
+    }
+
+    public function getRelatedAssets(int $flowId, string $tag): array
+    {
+        $tagLower = strtolower($tag);
+        $tagWildcard = $tagLower . '/%';
+        
+        // 1. Fetch Assets (notes and resources)
+        $stmtAssets = $this->db->prepare(
+            'SELECT DISTINCT a.*, rm.folder_name, rm.filename 
+             FROM assets a
+             LEFT JOIN resource_metadata rm ON a.id = rm.asset_id
+             JOIN asset_tags at ON a.id = at.asset_id
+             JOIN tags t ON at.tag_id = t.id
+             WHERE a.studyflow_id = :flow_id 
+               AND (t.prefix = :tag OR t.prefix LIKE :tag_wildcard)
+             ORDER BY a.type DESC, a.created_at DESC'
+        );
+        $stmtAssets->execute([
+            'flow_id' => $flowId,
+            'tag' => $tagLower,
+            'tag_wildcard' => $tagWildcard
+        ]);
+        $assets = $stmtAssets->fetchAll();
+        
+        $notes = [];
+        $resources = [];
+        foreach ($assets as $asset) {
+            if ($asset['type'] === 'note') {
+                $notes[] = $asset;
+            } else {
+                $asset['presigned_url'] = \StudyFlow\Support\Storage::getDownloadUrl($asset['storage_key']);
+                $resources[] = $asset;
+            }
+        }
+        
+        // 2. Fetch Fragments
+        $stmtFrags = $this->db->prepare(
+            'SELECT DISTINCT af.*, a.title as asset_title 
+             FROM asset_fragments af
+             JOIN assets a ON af.asset_id = a.id
+             JOIN tags t ON af.tag_id = t.id
+             WHERE a.studyflow_id = :flow_id 
+               AND (t.prefix = :tag OR t.prefix LIKE :tag_wildcard)
+             ORDER BY af.created_at DESC'
+        );
+        $stmtFrags->execute([
+            'flow_id' => $flowId,
+            'tag' => $tagLower,
+            'tag_wildcard' => $tagWildcard
+        ]);
+        $fragments = $stmtFrags->fetchAll();
+        
+        return [
+            'notes' => $notes,
+            'resources' => $resources,
+            'fragments' => $fragments
+        ];
+    }
+
+    public function createFolder(array $data): int
+    {
+        // Check for duplicates (TC10 unique key constraint)
+        $stmtCheck = $this->db->prepare('SELECT id FROM assets WHERE studyflow_id = :studyflow_id AND type = \'folder\' AND title = :title LIMIT 1');
+        $stmtCheck->execute([
+            'studyflow_id' => $data['studyflow_id'],
+            'title' => $data['title']
+        ]);
+        if ($stmtCheck->fetch()) {
+            throw new \Exception("Thư mục đã tồn tại.");
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO assets (studyflow_id, type, title) 
+                 VALUES (:studyflow_id, \'folder\', :title)'
+            );
+            $stmt->execute([
+                'studyflow_id' => $data['studyflow_id'],
+                'title' => $data['title'],
+            ]);
+            $assetId = (int)$this->db->lastInsertId();
+
+            $stmtMeta = $this->db->prepare(
+                'INSERT INTO resource_metadata (asset_id, filename, folder_name, description) 
+                 VALUES (:asset_id, \'\', :folder_name, :description)'
+            );
+            $stmtMeta->execute([
+                'asset_id' => $assetId,
+                'folder_name' => 'Root',
+                'description' => $data['description'] ?? null,
+            ]);
+
+            $this->db->commit();
+            return $assetId;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    public function updateFolderName(int $id, string $newName): bool
+    {
+        // First get the old title of the folder asset
+        $stmtOld = $this->db->prepare('SELECT title FROM assets WHERE id = :id AND type = \'folder\'');
+        $stmtOld->execute(['id' => $id]);
+        $oldTitle = $stmtOld->fetchColumn();
+
+        if (!$oldTitle) return false;
+
+        $this->db->beginTransaction();
+        try {
+            // Update the folder asset title
+            $stmt = $this->db->prepare('UPDATE assets SET title = :title, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
+            $stmt->execute(['id' => $id, 'title' => $newName]);
+
+            // Update all resources that have this old folder_name
+            $stmtMeta = $this->db->prepare('UPDATE resource_metadata SET folder_name = :new_name WHERE folder_name = :old_name');
+            $stmtMeta->execute(['new_name' => $newName, 'old_name' => $oldTitle]);
+
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
+    }
+
+    public function updateAssetTitle(int $id, string $newTitle): bool
+    {
+        $stmt = $this->db->prepare('UPDATE assets SET title = :title, updated_at = CURRENT_TIMESTAMP WHERE id = :id');
+        return $stmt->execute(['id' => $id, 'title' => $newTitle]);
+    }
+
+    public function moveAsset(int $id, string $folderName): bool
+    {
+        $stmt = $this->db->prepare('UPDATE resource_metadata SET folder_name = :folder_name WHERE asset_id = :id');
+        return $stmt->execute(['id' => $id, 'folder_name' => $folderName]);
+    }
+
+    public function updateAssetOrder(array $orderIds): bool
+    {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare('UPDATE assets SET sort_order = :sort_order WHERE id = :id');
+            foreach ($orderIds as $index => $id) {
+                $stmt->execute(['sort_order' => $index, 'id' => $id]);
+            }
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            return false;
+        }
     }
 }
